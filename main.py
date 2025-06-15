@@ -41,6 +41,34 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Available models with descriptions
+AVAILABLE_MODELS = {
+    "microsoft/DialoGPT-medium": {
+        "name": "DialoGPT Medium",
+        "description": "Microsoft's conversational AI model - Good for general chat"
+    },
+    "Qwen/Qwen2.5-7B-Instruct": {
+        "name": "Qwen 2.5 7B Instruct",
+        "description": "Alibaba's instruction-following model - Excellent for tasks and Q&A"
+    },
+    "microsoft/DialoGPT-large": {
+        "name": "DialoGPT Large",
+        "description": "Larger version of DialoGPT - Better responses, slower generation"
+    },
+    "facebook/blenderbot-400M-distill": {
+        "name": "BlenderBot 400M",
+        "description": "Facebook's conversational AI - Good balance of speed and quality"
+    },
+    "google/flan-t5-large": {
+        "name": "FLAN-T5 Large",
+        "description": "Google's instruction-tuned model - Great for following instructions"
+    },
+    "HuggingFaceH4/zephyr-7b-beta": {
+        "name": "Zephyr 7B Beta",
+        "description": "Fine-tuned conversational model - High quality responses"
+    }
+}
+
 class HuggingFaceChat:
     def __init__(self, api_token: str, model_name: str):
         self.api_token = api_token
@@ -138,6 +166,38 @@ def main():
             api_token = ""
             default_model = "microsoft/DialoGPT-medium"
         
+        # Model selection dropdown
+        st.subheader("🎯 Select Model")
+        
+        # Create options for selectbox
+        model_options = {}
+        for model_id, info in AVAILABLE_MODELS.items():
+            display_name = f"{info['name']} - {info['description']}"
+            model_options[display_name] = model_id
+        
+        # Find default selection
+        default_display_name = None
+        for display_name, model_id in model_options.items():
+            if model_id == default_model:
+                default_display_name = display_name
+                break
+        
+        if default_display_name is None:
+            default_display_name = list(model_options.keys())[0]
+        
+        selected_display = st.selectbox(
+            "Choose your AI model:",
+            options=list(model_options.keys()),
+            index=list(model_options.keys()).index(default_display_name),
+            help="Different models have different strengths and response styles"
+        )
+        
+        selected_model = model_options[selected_display]
+        
+        # Show model info
+        model_info = AVAILABLE_MODELS[selected_model]
+        st.info(f"**{model_info['name']}**\n\n{model_info['description']}")
+        
         # Show configuration method
         config_method = st.radio(
             "Configuration Method:",
@@ -154,18 +214,28 @@ def main():
                 help="Enter your Hugging Face API token"
             )
             
-            model_name = st.text_input(
-                "Model Name",
-                value=default_model,
-                help="Enter your Hugging Face model name (e.g., your-username/your-model)"
-            )
+            # Option to use custom model
+            use_custom = st.checkbox("Use custom model instead", help="Enter your own model name")
+            if use_custom:
+                model_name = st.text_input(
+                    "Custom Model Name",
+                    value="",
+                    help="Enter your Hugging Face model name (e.g., your-username/your-model)"
+                )
+            else:
+                model_name = selected_model
         else:
             # Use secrets
-            model_name = st.text_input(
-                "Model Name",
-                value=default_model,
-                help="Model name from secrets or enter custom model"
-            )
+            # Option to use custom model
+            use_custom = st.checkbox("Use custom model instead", help="Enter your own model name")
+            if use_custom:
+                model_name = st.text_input(
+                    "Custom Model Name",
+                    value="",
+                    help="Enter your Hugging Face model name (e.g., your-username/your-model)"
+                )
+            else:
+                model_name = selected_model
             
             if api_token:
                 st.success("🔑 API Token loaded from secrets")
@@ -268,10 +338,13 @@ def main():
             
             2. **Deploy** your app and it will automatically use the secrets!
             
-            ### 📚 Supported Models
-            - Custom fine-tuned models
-            - Pre-trained conversational models  
-            - Any text-generation model on Hugging Face
+            ### 📚 Available Models
+            - **DialoGPT Medium/Large**: Microsoft's conversational models
+            - **Qwen 2.5 7B Instruct**: Alibaba's powerful instruction-following model
+            - **BlenderBot 400M**: Facebook's balanced conversational AI
+            - **FLAN-T5 Large**: Google's instruction-tuned model
+            - **Zephyr 7B Beta**: High-quality fine-tuned conversational model
+            - **Custom Models**: Use your own fine-tuned models
             """)
         return
     
