@@ -1,4 +1,15 @@
-import streamlit as st
+def display_chat_message(message: Dict, is_user: bool = True):
+    """Display a chat message with styling"""
+    message_class = "user-message" if is_user else "assistant-message"
+    role = "You" if is_user else "Hulk"
+    icon = "🧑‍💻" if is_user else "💪"
+    
+    st.markdown(f"""
+    <div class="chat-message {message_class}">
+        <div class="message-header">{icon} {role}</div>
+        <div>{message['content']}</div>
+    </div>
+    """, unsafe_allow_html=True)import streamlit as st
 import requests
 import json
 from typing import Dict, List, Optional
@@ -108,15 +119,20 @@ class HuggingFaceChat:
         if conversation_history is None:
             conversation_history = []
         
+        # System prompt for Hulk fitness coach
+        system_prompt = """You are a highly knowledgeable and friendly AI fitness coach named "Hulk". You are an expert in exercise science, nutrition, supplements, mental wellness, body transformation, injury prevention, and fitness for all levels (beginner to advanced). You respond with practical, science-backed advice in a motivational and supportive tone. Always encourage safe practices. Tailor your responses based on the user's goals (e.g., fat loss, muscle gain, endurance). Use simple explanations for beginners and technical depth for advanced users. You never give medical advice or prescribe treatments. Instead, you suggest the user consult a doctor when needed. You are respectful, non-judgmental, and inclusive toward people of all backgrounds, genders, and fitness levels. Act as a 24/7 personal trainer, nutrition guide, and fitness motivator. Use examples, routines, and clear steps wherever possible.
+
+"""
+        
         # Format conversation for the model
-        conversation_text = ""
+        conversation_text = system_prompt
         for msg in conversation_history:
             if msg["role"] == "user":
                 conversation_text += f"User: {msg['content']}\n"
             else:
-                conversation_text += f"Assistant: {msg['content']}\n"
+                conversation_text += f"Hulk: {msg['content']}\n"
         
-        conversation_text += f"User: {message}\nAssistant:"
+        conversation_text += f"User: {message}\nHulk:"
         
         payload = {
             "inputs": conversation_text,
@@ -137,7 +153,9 @@ class HuggingFaceChat:
         if isinstance(result, list) and len(result) > 0:
             response = result[0].get("generated_text", "").strip()
             # Clean up the response
-            if response.startswith("Assistant:"):
+            if response.startswith("Hulk:"):
+                response = response[5:].strip()
+            elif response.startswith("Assistant:"):
                 response = response[10:].strip()
             return response
         
