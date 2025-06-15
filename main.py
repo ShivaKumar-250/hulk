@@ -41,31 +41,48 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Available models with descriptions (verified for Inference API compatibility)
-AVAILABLE_MODELS = {
-    "microsoft/DialoGPT-medium": {
-        "name": "DialoGPT Medium",
-        "description": "Microsoft's conversational AI model - Good for general chat"
+# Popular models dictionary
+POPULAR_MODELS = {
+    "Qwen Models": {
+        "Qwen/Qwen2.5-Coder-32B-Instruct": "Qwen2.5-Coder-32B-Instruct",
+        "Qwen/Qwen2.5-72B-Instruct": "Qwen2.5-72B-Instruct", 
+        "Qwen/Qwen2.5-32B-Instruct": "Qwen2.5-32B-Instruct",
+        "Qwen/Qwen2.5-14B-Instruct": "Qwen2.5-14B-Instruct",
+        "Qwen/Qwen2.5-7B-Instruct": "Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-3B-Instruct": "Qwen2.5-3B-Instruct",
+        "Qwen/Qwen2.5-1.5B-Instruct": "Qwen2.5-1.5B-Instruct"
     },
-    "microsoft/DialoGPT-large": {
-        "name": "DialoGPT Large",
-        "description": "Larger version of DialoGPT - Better responses, slower generation"
+    "Meta Llama": {
+        "meta-llama/Llama-3.2-11B-Vision-Instruct": "Llama-3.2-11B-Vision-Instruct",
+        "meta-llama/Llama-3.2-3B-Instruct": "Llama-3.2-3B-Instruct",
+        "meta-llama/Llama-3.2-1B-Instruct": "Llama-3.2-1B-Instruct",
+        "meta-llama/Meta-Llama-3.1-8B-Instruct": "Meta-Llama-3.1-8B-Instruct",
+        "meta-llama/Meta-Llama-3.1-70B-Instruct": "Meta-Llama-3.1-70B-Instruct"
     },
-    "microsoft/DialoGPT-small": {
-        "name": "DialoGPT Small",
-        "description": "Smaller, faster version of DialoGPT - Quick responses"
+    "Mistral AI": {
+        "mistralai/Mistral-7B-Instruct-v0.3": "Mistral-7B-Instruct-v0.3",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1": "Mixtral-8x7B-Instruct-v0.1",
+        "mistralai/Mistral-Nemo-Instruct-2407": "Mistral-Nemo-Instruct-2407"
     },
-    "facebook/blenderbot-3B": {
-        "name": "BlenderBot 3B",
-        "description": "Facebook's large conversational AI - High quality responses"
+    "Google": {
+        "google/gemma-2-9b-it": "Gemma-2-9B-IT",
+        "google/gemma-2-2b-it": "Gemma-2-2B-IT",
+        "google/gemma-1.1-7b-it": "Gemma-1.1-7B-IT"
     },
-    "facebook/blenderbot_small-90M": {
-        "name": "BlenderBot Small 90M",
-        "description": "Compact version of BlenderBot - Fast and efficient"
+    "Microsoft": {
+        "microsoft/DialoGPT-large": "DialoGPT-Large",
+        "microsoft/DialoGPT-medium": "DialoGPT-Medium",
+        "microsoft/DialoGPT-small": "DialoGPT-Small"
     },
-    "gpt2": {
-        "name": "GPT-2",
-        "description": "OpenAI's GPT-2 model - Creative text generation and conversation"
+    "Hugging Face": {
+        "HuggingFaceH4/zephyr-7b-beta": "Zephyr-7B-Beta",
+        "HuggingFaceH4/starchat-beta": "StarChat-Beta"
+    },
+    "Other Popular": {
+        "EleutherAI/gpt-j-6b": "GPT-J-6B",
+        "bigscience/bloom-7b1": "BLOOM-7B1",
+        "tiiuae/falcon-7b-instruct": "Falcon-7B-Instruct",
+        "teknium/OpenHermes-2.5-Mistral-7B": "OpenHermes-2.5-Mistral-7B"
     }
 }
 
@@ -75,224 +92,56 @@ class HuggingFaceChat:
         self.model_name = model_name
         self.api_url = f"https://api-inference.huggingface.co/models/{model_name}"
         self.headers = {"Authorization": f"Bearer {api_token}"}
+    
+    def query(self, payload: Dict) -> Dict:
+        """Send request to Hugging Face API"""
+        try:
+            response = requests.post(self.api_url, headers=self.headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"API request failed: {str(e)}")
+            return {"error": str(e)}
+    
+    def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
+        """Send chat message and get response"""
+        if conversation_history is None:
+            conversation_history = []
         
-        # Model-specific configurations
-        self.model_configs = {
-            "microsoft/DialoGPT-medium": {
-                "max_length": 1000,
-                "temperature": 0.7,
-                "repetition_penalty": 1.1,
-                "pad_token_id": 50256
-            },
-            "microsoft/DialoGPT-large": {
-                "max_length": 1000,
-                "temperature": 0.8,
-                "repetition_penalty": 1.1,
-                "pad_token_id": 50256
-            },
-            "microsoft/DialoGPT-small": {
-                "max_length": 800,
-                "temperature": 0.7,
-                "repetition_penalty": 1.1,
-                "pad_token_id": 50256
-            },
-            "facebook/blenderbot-3B": {
+        # Format conversation for the model
+        conversation_text = ""
+        for msg in conversation_history:
+            if msg["role"] == "user":
+                conversation_text += f"User: {msg['content']}\n"
+            else:
+                conversation_text += f"Assistant: {msg['content']}\n"
+        
+        conversation_text += f"User: {message}\nAssistant:"
+        
+        payload = {
+            "inputs": conversation_text,
+            "parameters": {
                 "max_length": 512,
-                "temperature": 0.9,
+                "temperature": 0.7,
+                "do_sample": True,
                 "top_p": 0.9,
-                "do_sample": True
-            },
-            "facebook/blenderbot_small-90M": {
-                "max_length": 400,
-                "temperature": 0.8,
-                "top_p": 0.9,
-                "do_sample": True
-            },
-            "gpt2": {
-                "max_length": 512,
-                "temperature": 0.8,
-                "top_p": 0.9,
-                "repetition_penalty": 1.2,
-                "do_sample": True
+                "return_full_text": False
             }
         }
-    
-    def get_model_config(self) -> Dict:
-        """Get model-specific configuration parameters"""
-        return self.model_configs.get(self.model_name, {
-            "max_length": 512,
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "do_sample": True,
-            "repetition_penalty": 1.1
-        })
-    
-    def query(self, payload: Dict, max_retries: int = 3) -> Dict:
-        """Send request to Hugging Face API with robust error handling"""
-        for attempt in range(max_retries):
-            try:
-                response = requests.post(self.api_url, headers=self.headers, json=payload, timeout=30)
-                
-                # Handle specific error cases
-                if response.status_code == 401:
-                    error_msg = "Invalid API token. Please check your Hugging Face API token."
-                    st.error(f"🔑 {error_msg}")
-                    return {"error": error_msg}
-                elif response.status_code == 404:
-                    error_msg = f"Model '{self.model_name}' not found or not available on Inference API."
-                    st.error(f"🤖 {error_msg}")
-                    return {"error": error_msg}
-                elif response.status_code == 503:
-                    if attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 5
-                        st.warning(f"⏳ Model is loading... Retrying in {wait_time} seconds (Attempt {attempt + 1}/{max_retries})")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        error_msg = "Model is currently unavailable. Please try again later or select a different model."
-                        st.error(f"🔄 {error_msg}")
-                        return {"error": error_msg}
-                elif response.status_code == 429:
-                    if attempt < max_retries - 1:
-                        wait_time = 10
-                        st.warning(f"⚠️ Rate limit exceeded. Waiting {wait_time} seconds...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        error_msg = "Rate limit exceeded. Please try again later."
-                        st.error(f"⏱️ {error_msg}")
-                        return {"error": error_msg}
-                elif response.status_code == 500:
-                    error_msg = "Server error. Please try again later."
-                    st.error(f"🔥 {error_msg}")
-                    return {"error": error_msg}
-                
-                response.raise_for_status()
-                return response.json()
-                
-            except requests.exceptions.Timeout:
-                if attempt < max_retries - 1:
-                    st.warning(f"🕐 Request timed out. Retrying... (Attempt {attempt + 1}/{max_retries})")
-                    continue
-                else:
-                    error_msg = "Request timed out. Please try again."
-                    st.error(f"⏰ {error_msg}")
-                    return {"error": error_msg}
-            except requests.exceptions.RequestException as e:
-                error_msg = f"Network error: {str(e)}"
-                st.error(f"🌐 {error_msg}")
-                return {"error": error_msg}
         
-        return {"error": "Max retries exceeded"}
-    
-    def format_conversation(self, message: str, conversation_history: List[Dict]) -> str:
-        """Format conversation based on model type"""
-        if "DialoGPT" in self.model_name:
-            # DialoGPT specific formatting
-            conversation_text = ""
-            for msg in conversation_history[-6:]:  # Keep last 6 messages for context
-                if msg["role"] == "user":
-                    conversation_text += f"{msg['content']}<|endoftext|>"
-                else:
-                    conversation_text += f"{msg['content']}<|endoftext|>"
-            conversation_text += f"{message}<|endoftext|>"
-            return conversation_text
+        result = self.query(payload)
         
-        elif "blenderbot" in self.model_name.lower():
-            # BlenderBot specific formatting
-            conversation_text = ""
-            for msg in conversation_history[-4:]:  # Keep last 4 messages
-                if msg["role"] == "user":
-                    conversation_text += f" {msg['content']}"
-                else:
-                    conversation_text += f" {msg['content']}"
-            conversation_text += f" {message}"
-            return conversation_text.strip()
-        
-        else:
-            # Generic formatting for other models
-            conversation_text = "You are a helpful, friendly, and engaging AI assistant. Provide thoughtful, conversational responses.\n\n"
-            for msg in conversation_history[-5:]:
-                if msg["role"] == "user":
-                    conversation_text += f"Human: {msg['content']}\n"
-                else:
-                    conversation_text += f"Assistant: {msg['content']}\n"
-            conversation_text += f"Human: {message}\nAssistant:"
-            return conversation_text
-    
-    def process_response(self, result: Dict, original_input: str) -> str:
-        """Enhanced response processing with model-specific handling"""
         if "error" in result:
             return f"Error: {result['error']}"
         
         if isinstance(result, list) and len(result) > 0:
             response = result[0].get("generated_text", "").strip()
-            
-            # Model-specific response cleaning
-            if "DialoGPT" in self.model_name:
-                # Clean DialoGPT responses
-                if "<|endoftext|>" in response:
-                    response = response.split("<|endoftext|>")[-1].strip()
-                # Remove the original input if it's repeated
-                if response.startswith(original_input):
-                    response = response[len(original_input):].strip()
-            
-            elif "blenderbot" in self.model_name.lower():
-                # Clean BlenderBot responses
-                response = response.replace(original_input, "").strip()
-            
-            else:
-                # Generic cleaning for other models
-                if "Assistant:" in response:
-                    response = response.split("Assistant:")[-1].strip()
-                if "Human:" in response:
-                    response = response.split("Human:")[0].strip()
-                # Remove original input if repeated
-                if response.startswith(original_input):
-                    response = response[len(original_input):].strip()
-            
-            # Additional cleaning
-            response = response.strip()
-            
-            # Remove common artifacts
-            artifacts_to_remove = ["<|endoftext|>", "<pad>", "<unk>", "##"]
-            for artifact in artifacts_to_remove:
-                response = response.replace(artifact, "")
-            
-            # Ensure response isn't empty or too short
-            if not response or len(response.strip()) < 3:
-                return "I apologize, but I couldn't generate a meaningful response. Could you please rephrase your question?"
-            
-            # Limit response length to prevent overly long outputs
-            if len(response) > 1000:
-                response = response[:1000] + "..."
-            
-            return response.strip()
+            # Clean up the response
+            if response.startswith("Assistant:"):
+                response = response[10:].strip()
+            return response
         
-        return "Sorry, I couldn't generate a response. Please try again."
-    
-    def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
-        """Send chat message and get response with enhanced processing"""
-        if conversation_history is None:
-            conversation_history = []
-        
-        # Format conversation based on model type
-        formatted_input = self.format_conversation(message, conversation_history)
-        
-        # Get model-specific configuration
-        model_config = self.get_model_config()
-        
-        payload = {
-            "inputs": formatted_input,
-            "parameters": model_config,
-            "options": {
-                "wait_for_model": True,
-                "use_cache": False
-            }
-        }
-        
-        result = self.query(payload)
-        return self.process_response(result, formatted_input)
+        return "Sorry, I couldn't generate a response."
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -334,38 +183,6 @@ def main():
             api_token = ""
             default_model = "microsoft/DialoGPT-medium"
         
-        # Model selection dropdown
-        st.subheader("🎯 Select Model")
-        
-        # Create options for selectbox
-        model_options = {}
-        for model_id, info in AVAILABLE_MODELS.items():
-            display_name = f"{info['name']} - {info['description']}"
-            model_options[display_name] = model_id
-        
-        # Find default selection
-        default_display_name = None
-        for display_name, model_id in model_options.items():
-            if model_id == default_model:
-                default_display_name = display_name
-                break
-        
-        if default_display_name is None:
-            default_display_name = list(model_options.keys())[0]
-        
-        selected_display = st.selectbox(
-            "Choose your AI model:",
-            options=list(model_options.keys()),
-            index=list(model_options.keys()).index(default_display_name),
-            help="Different models have different strengths and response styles"
-        )
-        
-        selected_model = model_options[selected_display]
-        
-        # Show model info
-        model_info = AVAILABLE_MODELS[selected_model]
-        st.info(f"**{model_info['name']}**\n\n{model_info['description']}")
-        
         # Show configuration method
         config_method = st.radio(
             "Configuration Method:",
@@ -381,62 +198,64 @@ def main():
                 type="password",
                 help="Enter your Hugging Face API token"
             )
-            
-            # Option to use custom model
-            use_custom = st.checkbox("Use custom model instead", help="Enter your own model name")
-            if use_custom:
-                model_name = st.text_input(
-                    "Custom Model Name",
-                    value="",
-                    help="Enter your Hugging Face model name (e.g., your-username/your-model)"
-                )
-            else:
-                model_name = selected_model
         else:
             # Use secrets
-            # Option to use custom model
-            use_custom = st.checkbox("Use custom model instead", help="Enter your own model name")
-            if use_custom:
-                model_name = st.text_input(
-                    "Custom Model Name",
-                    value="",
-                    help="Enter your Hugging Face model name (e.g., your-username/your-model)"
-                )
-            else:
-                model_name = selected_model
-            
             if api_token:
                 st.success("🔑 API Token loaded from secrets")
             else:
                 st.error("🔑 API Token not found in secrets")
         
+        # Model selection
+        st.subheader("🤖 Model Selection")
+        
+        model_selection_method = st.radio(
+            "Choose model:",
+            ["Popular Models", "Custom Model"],
+            help="Select from popular models or enter custom model name"
+        )
+        
+        if model_selection_method == "Popular Models":
+            # Create flattened list for selectbox
+            model_options = []
+            model_mapping = {}
+            
+            for category, models in POPULAR_MODELS.items():
+                for model_id, display_name in models.items():
+                    option_text = f"{category} - {display_name}"
+                    model_options.append(option_text)
+                    model_mapping[option_text] = model_id
+            
+            selected_option = st.selectbox(
+                "Select a model:",
+                model_options,
+                index=model_options.index("Microsoft - DialoGPT-Medium") if "Microsoft - DialoGPT-Medium" in model_options else 0,
+                help="Choose from popular pre-trained models"
+            )
+            
+            model_name = model_mapping[selected_option]
+            
+            # Show model info
+            st.info(f"Selected: `{model_name}`")
+            
+        else:
+            # Custom model input
+            model_name = st.text_input(
+                "Custom Model Name",
+                value=default_model,
+                help="Enter your Hugging Face model name (e.g., your-username/your-model)"
+            )
+        
         # Connect button
         if st.button("🔗 Connect to Model", type="primary"):
             if api_token and model_name:
                 try:
-                    # Test the connection first
-                    test_chat = HuggingFaceChat(api_token, model_name)
-                    
-                    # Make a test request to verify credentials and model availability
-                    test_payload = {
-                        "inputs": "Hello",
-                        "parameters": {"max_length": 10, "temperature": 0.7}
-                    }
-                    
-                    with st.spinner("🔍 Testing connection..."):
-                        test_result = test_chat.query(test_payload)
-                    
-                    if "error" not in test_result:
-                        st.session_state.hf_chat = test_chat
-                        st.success("✅ Connected successfully!")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Connection test failed: {test_result['error']}")
-                        
+                    st.session_state.hf_chat = HuggingFaceChat(api_token, model_name)
+                    st.success("✅ Connected successfully!")
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Connection failed: {str(e)}")
+                    st.error(f"Connection failed: {str(e)}")
             else:
-                st.error("⚠️ Please provide both API token and model name")
+                st.error("Please provide both API token and model name")
         
         # Connection status
         if st.session_state.hf_chat:
@@ -462,14 +281,6 @@ def main():
         # Instructions
         st.header("📋 Instructions")
         st.markdown("""
-        ### 🔑 Getting Your API Token:
-        1. Go to [Hugging Face Settings](https://huggingface.co/settings/tokens)
-        2. Click "New token"
-        3. Give it a name (e.g., "Streamlit Chat")
-        4. Select "Read" permissions
-        5. Click "Generate a token"
-        6. Copy the token (starts with "hf_...")
-        
         ### For Streamlit Cloud Deployment:
         1. Add secrets in your Streamlit Cloud app settings:
            - `HUGGING_FACE_API_TOKEN`: Your HF API token
@@ -482,22 +293,8 @@ def main():
         3. Click 'Connect to Model'
         4. Start chatting!
         
-        ### ⚠️ Common Issues:
-        - **Invalid credentials**: Check your API token is correct and active
-        - **Model not found**: Some models may not be available on free tier
-        - **Model loading**: Wait a few moments and try again
+        **Get API Token:** [Hugging Face Settings](https://huggingface.co/settings/tokens)
         """)
-        
-        # API Token validation tips
-        st.info("💡 **API Token Tips:**\n"
-                "- Token should start with 'hf_'\n" 
-                "- Make sure it has 'Read' permissions\n"
-                "- Don't share your token publicly")
-        
-        # Model availability note
-        st.warning("📝 **Model Availability:**\n"
-                  "Some models may require Hugging Face Pro subscription or may be temporarily unavailable. "
-                  "Try different models if you encounter issues.")
         
         # Deployment info
         st.header("🚀 Deployment Info")
@@ -544,13 +341,10 @@ def main():
             
             2. **Deploy** your app and it will automatically use the secrets!
             
-            ### 📚 Available Models
-            - **DialoGPT (Small/Medium/Large)**: Microsoft's conversational models
-            - **BlenderBot (3B/90M)**: Facebook's conversational AI models
-            - **GPT-2**: OpenAI's creative text generation model
-            - **Custom Models**: Use your own fine-tuned models
-            
-            **Note**: Some newer models may not be available on the free Inference API. These models are tested and working.
+            ### 📚 Supported Models
+            - Custom fine-tuned models
+            - Pre-trained conversational models  
+            - Any text-generation model on Hugging Face
             """)
         return
     
