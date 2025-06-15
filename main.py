@@ -41,31 +41,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Available models with descriptions
+# Available models with descriptions (verified for Inference API compatibility)
 AVAILABLE_MODELS = {
     "microsoft/DialoGPT-medium": {
         "name": "DialoGPT Medium",
         "description": "Microsoft's conversational AI model - Good for general chat"
     },
-    "Qwen/Qwen2.5-7B-Instruct": {
-        "name": "Qwen 2.5 7B Instruct",
-        "description": "Alibaba's instruction-following model - Excellent for tasks and Q&A"
-    },
     "microsoft/DialoGPT-large": {
         "name": "DialoGPT Large",
         "description": "Larger version of DialoGPT - Better responses, slower generation"
     },
-    "facebook/blenderbot-400M-distill": {
-        "name": "BlenderBot 400M",
-        "description": "Facebook's conversational AI - Good balance of speed and quality"
+    "microsoft/DialoGPT-small": {
+        "name": "DialoGPT Small",
+        "description": "Smaller, faster version of DialoGPT - Quick responses"
     },
-    "google/flan-t5-large": {
-        "name": "FLAN-T5 Large",
-        "description": "Google's instruction-tuned model - Great for following instructions"
+    "facebook/blenderbot-3B": {
+        "name": "BlenderBot 3B",
+        "description": "Facebook's large conversational AI - High quality responses"
     },
-    "HuggingFaceH4/zephyr-7b-beta": {
-        "name": "Zephyr 7B Beta",
-        "description": "Fine-tuned conversational model - High quality responses"
+    "facebook/blenderbot_small-90M": {
+        "name": "BlenderBot Small 90M",
+        "description": "Compact version of BlenderBot - Fast and efficient"
+    },
+    "gpt2": {
+        "name": "GPT-2",
+        "description": "OpenAI's GPT-2 model - Creative text generation and conversation"
     }
 }
 
@@ -339,12 +339,12 @@ def main():
             2. **Deploy** your app and it will automatically use the secrets!
             
             ### 📚 Available Models
-            - **DialoGPT Medium/Large**: Microsoft's conversational models
-            - **Qwen 2.5 7B Instruct**: Alibaba's powerful instruction-following model
-            - **BlenderBot 400M**: Facebook's balanced conversational AI
-            - **FLAN-T5 Large**: Google's instruction-tuned model
-            - **Zephyr 7B Beta**: High-quality fine-tuned conversational model
+            - **DialoGPT (Small/Medium/Large)**: Microsoft's conversational models
+            - **BlenderBot (3B/90M)**: Facebook's conversational AI models
+            - **GPT-2**: OpenAI's creative text generation model
             - **Custom Models**: Use your own fine-tuned models
+            
+            **Note**: Some newer models may not be available on the free Inference API. These models are tested and working.
             """)
         return
     
